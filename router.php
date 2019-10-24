@@ -186,7 +186,9 @@ function update_layer_json( $layer_id ){
   ] = json_decode($app->request->getBody(), true); 
   $layer = new Layer($layer_id);
   $response['update'] = $layer->set_json( $json );
-  $response['updated_layer'] = $layer->to_array();
+  //  reinstantiate the layer to get the new calculated centroid and envelope
+  $uLayer = new Layer($layer_id);
+  $response['updated_layer'] = $uLayer->to_array();
   print json_encode($response);
 }
 

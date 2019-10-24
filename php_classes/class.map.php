@@ -6,6 +6,8 @@ Class Map {
   private $owner;
   private $layers;
   private $layers_json;
+  private $envelope_json;
+  private $centroid_json;
 
   public function __construct($id) {
     $pdo = Data_Connecter::get_connection();
@@ -20,11 +22,32 @@ Class Map {
       $this->layers = json_decode($obj->layers);
     }
     $layers = array();
+    $envelopes = array(
+      "type" => "FeatureCollection",
+      "features" => array()
+    );
+    
     foreach ($this->layers as $layer){
+      //  we need to calculate the bounding box for each layer
+      //  to generate an overall bounding box
+      //  from which we can find the center
       $iLayer = new Layer($layer);
+      $layer_arr = $iLayer->to_array();
+      $w = geoPHP::load($layer_arr['layer_envelope'], 'wkt');
+      $env = $w->envelope();
+      $envJson = $env->out('json');
+      array_push($envelopes['features'], $envJson);
+
       array_push($layers, $iLayer->to_array());
     };
     $this->layers_json = $layers;
+    //  now we calculate the envelope and centroid from $envelopes array
+    $i = geoPHP::load(json_encode($envelopes), 'json');
+    $envelope = $i->envelope();
+    
+    $this->envelope_json = json_decode($envelope->out('json'));
+    $centroid = $i->centroid();
+    $this->centroid_json = json_decode($centroid->out('json'));
   }
 
   public static function get_maps_by_user($user_id) {
@@ -53,6 +76,8 @@ Class Map {
     $arr['owner'] = $this->owner;
     $arr['layers'] = $this->layers;
     $arr['layers_json'] = $this->layers_json;
+    $arr['envelope_json'] = $this->envelope_json;
+    $arr['centroid_json'] = $this->centroid_json;
     return $arr;
   }
 
