@@ -36,10 +36,14 @@ $app->get('/layers/:layer_id', 'get_layer');
 $app->post('/layers/', 'create_layer');
 $app->post('/layers/update/json/:layer_id', 'update_layer_json');
 $app->post('/layers/:layer_id/feature-update/', 'update_layer_feature');
+$app->get('/layers/user/:user_id', 'get_layers_by_user');
 
 //  maps
+$app->post('/maps/', 'create_map');
 $app->get('/maps/:map_id', 'get_map');
 $app->get('/maps/user/:user_id', 'get_maps_by_user');
+$app->post('/maps/:map_id/add_layer/', 'map_add_layer');
+$app->post('/maps/:map_id/remove_layer/', 'map_remove_layer');
 
 //  posts
 $app->post('/posts/', 'create_post');
@@ -76,6 +80,30 @@ function create_layer(){
   print json_encode($response);
 }
 
+function create_map () {
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [ 
+    'user' => $user,
+    'map_title'=> $map_title,
+    'map_desc'=> $map_desc 
+  ] = json_decode($app->request->getBody(), true);
+  $user_is_valid = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  $response['user_validated'] = $user_is_valid;
+  $response['user'] = $user;
+  $response['title'] = $map_title;
+  $response['desc'] = $map_desc;
+  //  TODO validate inputs
+
+  $inputs_validated = true;
+  $response['inputs_validated'] = $inputs_validated;
+  if ($inputs_validated == true && $user_is_valid == true) {
+    $response['new_map_id'] = Map::create_map($user['userId'], $map_title, $map_desc);
+  }
+  print json_encode($response);
+}
+
 function create_post(){
   //  TODO verify user and  validate data . .
   $app = \Slim\Slim::getInstance();
@@ -97,9 +125,13 @@ function get_all_layers(){
   print json_encode( Layer::get_all_layers() );
 }
 
-function get_layer( $layer_id ){
+function get_layer ($layer_id) {
   $layer = new Layer($layer_id);
   print json_encode($layer->to_array());
+}
+
+function get_layers_by_user ($user_id) {
+  print json_encode(Layer::get_layers_by_user($user_id));
 }
 
 function get_map($map_id){
@@ -151,6 +183,46 @@ function logoff(){
     $response['params'] = $params;
     $response['logoff'] = Logger::logoff( $params['userId'], $params['key'] );
     print json_encode($response);
+}
+
+function map_add_layer($map_id){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [ 
+    'user' => $user, 
+    'new_layer_id' => $new_layer_id
+  ] = json_decode($app->request->getBody(), true);
+  $response['map_id'] = $map_id;
+  $response['user'] = $user;
+  $response['new_layer_id'] = $new_layer_id;
+  $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  $map = new Map($map_id);
+  $response['original_map'] = $map->to_array();
+  $response['execute'] = $map->add_layer((int)$new_layer_id);
+  $map = new Map($map_id);
+  $response['new_map'] = $map->to_array();
+  print json_encode($response);
+}
+
+function map_remove_layer($map_id){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [ 
+    'user' => $user, 
+    'layer_id' => $layer_id
+  ] = json_decode($app->request->getBody(), true);
+  $response['map_id'] = $map_id;
+  $response['user'] = $user;
+  $response['layer_id'] = $layer_id;
+  $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  $map = new Map($map_id);
+  $response['original_map'] = $map->to_array();
+  $response['execute'] = $map->remove_layer((int)$layer_id);
+  $map = new Map($map_id);
+  $response['new_map'] = $map->to_array();
+  print json_encode($response);
 }
 
 function update_layer_feature( $layer_id ){

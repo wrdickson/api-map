@@ -84,6 +84,34 @@ Class Layer {
     return $layers;
   }
 
+  public static function get_layers_by_user ($user_id) {
+    $pdo = Data_Connecter::get_connection();
+    $stmt = $pdo->prepare("SELECT id, ST_AsWKT(layer_envelope) AS layer_envelope, ST_AsWkt(layer_centroid) AS layer_centroid, layer_owner, layer_json, layer_title, layer_desc, date_added, date_modified FROM map_layers WHERE layer_owner = :o");
+    $stmt->bindParam(":o", $user_id);
+    $execute = $stmt->execute();
+    $layers = array();
+    while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
+      $layer = array();
+      $layer['id'] = $obj->id;
+      $layer['layer_envelope'] = $obj->layer_envelope;
+      $env = geoPHP::load($obj->layer_envelope);
+      $layer['layer_envelope_array'] = $env;
+      $layer['layer_envelope_json'] = json_decode($env->out('json'));
+      $layer['layer_centroid'] = $obj->layer_centroid;
+      $geo = geoPHP::load($obj->layer_centroid);
+      $layer['layer_centroid_json'] = json_decode($geo->out('json'), true);
+      $layer['layer_owner'] = $obj->layer_owner;
+      //  here's where we convert the geoJson feature collection to a php array
+      $layer['layer_json'] = json_decode($obj->layer_json);
+      $layer['layer_title'] = $obj->layer_title;
+      $layer['layer_desc'] = $obj->layer_desc;
+      $layer['date_added'] = $obj->date_added;
+      $layer['date_modified'] = $obj->date_modified; 
+      array_push($layers, $layer);     
+    }
+    return $layers;
+  }
+
   public function to_array(){
     $arr = array();
     $arr['id'] = $this->id;
