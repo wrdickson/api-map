@@ -2,6 +2,7 @@
 Class Layer {
   private $id;
   private $layer_envelope;
+  private $layer_envelope_json;
   private $layer_centroid;
   private $layer_centroid_json;
   private $layer_owner;
@@ -22,7 +23,7 @@ Class Layer {
       $this->id = $obj->id;
       $this->layer_envelope = $obj->layer_envelope;
       $env = geoPHP::load($obj->layer_envelope);
-
+      $this->layer_envelope_json = json_decode($env->out('json'), true);
       $this->layer_centroid = $obj->layer_centroid;
       $geo = geoPHP::load($obj->layer_centroid);
       $this->layer_centroid_json = json_decode($geo->out('json'), true);
@@ -86,7 +87,7 @@ Class Layer {
 
   public static function get_layers_by_user ($user_id) {
     $pdo = Data_Connecter::get_connection();
-    $stmt = $pdo->prepare("SELECT id, ST_AsWKT(layer_envelope) AS layer_envelope, ST_AsWkt(layer_centroid) AS layer_centroid, layer_owner, layer_json, layer_title, layer_desc, date_added, date_modified FROM map_layers WHERE layer_owner = :o");
+    $stmt = $pdo->prepare("SELECT id, ST_AsWKT(layer_envelope) AS layer_envelope, ST_AsWkt(layer_centroid) AS layer_centroid, layer_owner, layer_json, layer_title, layer_desc, date_added, date_modified FROM map_layers WHERE layer_owner = :o ORDER BY layer_title ASC");
     $stmt->bindParam(":o", $user_id);
     $execute = $stmt->execute();
     $layers = array();
@@ -116,6 +117,7 @@ Class Layer {
     $arr = array();
     $arr['id'] = $this->id;
     $arr['layer_envelope'] = $this->layer_envelope;
+    $arr['layer_envelope_json'] = $this->layer_envelope_json;
     $arr['layer_centroid'] = $this->layer_centroid;
     $arr['layer_centroid_json'] = $this->layer_centroid_json;
     $arr['layer_owner'] = $this->layer_owner;
@@ -134,6 +136,11 @@ Class Layer {
 
   public function set_json($json){
     $this->layer_json = $json;
+    return $this->update_to_db();
+  }
+
+  public function set_title ($title) {
+    $this->layer_title = $title;
     return $this->update_to_db();
   }
 

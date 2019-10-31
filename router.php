@@ -35,6 +35,8 @@ $app->get('/layers/', 'get_all_layers');
 $app->get('/layers/:layer_id', 'get_layer');
 $app->post('/layers/', 'create_layer');
 $app->post('/layers/update/json/:layer_id', 'update_layer_json');
+$app->post('/layers/update/title/:layer_id', 'update_layer_title');
+$app->post('/layers/update/description/:layer_id', 'update_layer_description');
 $app->post('/layers/:layer_id/feature-update/', 'update_layer_feature');
 $app->get('/layers/user/:user_id', 'get_layers_by_user');
 
@@ -44,6 +46,10 @@ $app->get('/maps/:map_id', 'get_map');
 $app->get('/maps/user/:user_id', 'get_maps_by_user');
 $app->post('/maps/:map_id/add_layer/', 'map_add_layer');
 $app->post('/maps/:map_id/remove_layer/', 'map_remove_layer');
+$app->post('/maps/:map_id/title/', 'map_update_title');
+$app->post('/maps/:map_id/description/', 'map_update_description');
+
+$app->post('/test-update/', 'map_test_update');
 
 //  posts
 $app->post('/posts/', 'create_post');
@@ -193,15 +199,11 @@ function map_add_layer($map_id){
     'user' => $user, 
     'new_layer_id' => $new_layer_id
   ] = json_decode($app->request->getBody(), true);
-  $response['map_id'] = $map_id;
-  $response['user'] = $user;
-  $response['new_layer_id'] = $new_layer_id;
   $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
   $map = new Map($map_id);
-  $response['original_map'] = $map->to_array();
   $response['execute'] = $map->add_layer((int)$new_layer_id);
   $map = new Map($map_id);
-  $response['new_map'] = $map->to_array();
+  $response['updated_map'] = $map->to_array();
   print json_encode($response);
 }
 
@@ -213,15 +215,104 @@ function map_remove_layer($map_id){
     'user' => $user, 
     'layer_id' => $layer_id
   ] = json_decode($app->request->getBody(), true);
-  $response['map_id'] = $map_id;
-  $response['user'] = $user;
-  $response['layer_id'] = $layer_id;
   $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
   $map = new Map($map_id);
-  $response['original_map'] = $map->to_array();
   $response['execute'] = $map->remove_layer((int)$layer_id);
   $map = new Map($map_id);
-  $response['new_map'] = $map->to_array();
+  $response['updated_map'] = $map->to_array();
+  print json_encode($response);
+}
+
+function map_test_update () {
+  $response = array();
+  
+  $map = new Map(1);
+  $response['map'] = $map->to_array();
+  $response['update_title'] = $map->update_title("humungus");
+  $map = new Map(1);
+  $response['after'] = $map->to_array();
+  $map = new Map(1);
+  $response['updated'] = $map->to_array();
+  //$response['update'] = $map->update_to_db();
+  /*
+  $str = '{
+    "type" : "Feature",
+    "properties" : {
+      "title" : "Bounds",
+      "desc" : "Description"
+    },
+    "geometry" : {
+      "type" : "Polygon",
+      "coordinates" : [
+        [
+          [ -125.947266, 24.44715 ],
+          [ -125.947266, 51.508742 ],
+          [ -81.738281, 51.508742 ],
+          [ -81.738281, 24.44715 ],
+          [ -125.947266, 24.44715 ]
+        ]
+      ]
+    }
+  }';
+  $bounds = json_decode($str, true);
+  $i = geoPHP::load($str);
+  $bounds_wkt = $i->out('wkt');
+  $response['bounds_wkt'] = $bounds_wkt;
+  $response['bounds'] = $bounds;
+
+	$pdo = Data_Connecter::get_connection();
+    //this returns maps whose minimum bounding rectangle is entirely within the viewport params
+	$stmt = $pdo->prepare("SELECT id FROM maps WHERE MBRContains(ST_GeomFromText(:g1), centroid)");
+    //this returns maps whose centroid is within the viewport parms
+    //$stmt = $pdo->prepare("SELECT map_id, map_name, map_desc, map_area, AsText(map_envelope) AS map_envelope, AsText(map_centroid) AS map_centroid, map_json, map_owner FROM maps WHERE MBRContains(GeomFromText(:g1), map_centroid)");
+	$stmt->bindParam(":g1", $bounds_wkt);
+  $execute = $stmt->execute();
+  $response['execute'] = $execute;
+  $response['error'] = $pdo->errorInfo();
+  $maps = array();
+  while ($obj = $stmt->fetch(PDO::FETCH_OBJ)) {
+    $map = array();
+    $map['id'] = $obj->id;
+    array_push($maps, $map);
+  };
+  $response['maps'] = $maps;
+  */
+
+
+  print json_encode($response);
+}
+
+function map_update_description ($map_id) {
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [ 
+    'user' => $user, 
+    'new_description' => $new_description
+  ] = json_decode($app->request->getBody(), true);
+  $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  //  TODO validate input
+  $map =  new Map($map_id);
+  $response['execute'] = $map->update_description($new_description);
+  $new_map = new Map($map_id);
+  $response['updated_map'] = $new_map->to_array();
+  print json_encode($response);
+}
+
+function map_update_title ($map_id) {
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [ 
+    'user' => $user, 
+    'new_title' => $new_title
+  ] = json_decode($app->request->getBody(), true);
+  $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  //  TODO validate input
+  $map =  new Map($map_id);
+  $response['execute'] = $map->update_title($new_title);
+  $new_map = new Map($map_id);
+  $response['updated_map'] = $new_map->to_array();
   print json_encode($response);
 }
 
@@ -247,6 +338,22 @@ function update_layer_feature( $layer_id ){
 
 }
 
+function update_layer_description ($layer_id) {
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [
+      'user' => $user,
+      'new_description' => $new_description
+  ] = json_decode($app->request->getBody(), true);
+  $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  $layer = new Layer($layer_id);
+  $response['orig_layer'] = $layer->to_array();
+  $response['execute'] = $layer->set_desc($new_description);
+  $response['updated_layer'] = $layer->to_array();
+  print json_encode($response);
+}
+
 function update_layer_json( $layer_id ){
   $app = \Slim\Slim::getInstance();
   $response = array();
@@ -261,6 +368,22 @@ function update_layer_json( $layer_id ){
   //  reinstantiate the layer to get the new calculated centroid and envelope
   $uLayer = new Layer($layer_id);
   $response['updated_layer'] = $uLayer->to_array();
+  print json_encode($response);
+}
+
+function update_layer_title ($layer_id) {
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [
+      'user' => $user,
+      'new_title' => $new_title
+  ] = json_decode($app->request->getBody(), true);
+  $response['validate_user'] = Logger::validate_user($user['userId'], $user['username'], $user['key'], $user['permission']);
+  $layer = new Layer($layer_id);
+  $response['orig_layer'] = $layer->to_array();
+  $response['execute'] = $layer->set_title($new_title);
+  $response['updated_layer'] = $layer->to_array();
   print json_encode($response);
 }
 
