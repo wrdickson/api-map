@@ -76,10 +76,11 @@ Class Map {
   public static function create_map($user_id, $map_title, $map_desc){
     $pdo = Data_Connecter::get_connection();
     $layers = "[]";
+    $is_empty = "1";
     $stmt = $pdo->prepare("INSERT INTO maps (title, description, is_empty, owner, layers) VALUES (:t, :d, :ie, :o, :l)");
     $stmt->bindParam(":t", $map_title);
     $stmt->bindParam(":d", $map_desc);
-    $stmt->bindParam(":ie", true);
+    $stmt->bindParam(":ie", $is_empty);
     $stmt->bindParam(":o", $user_id);
     $stmt->bindParam(":l", $layers);
     $execute = $stmt->execute();
