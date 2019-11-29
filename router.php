@@ -56,6 +56,12 @@ $app->post('/posts/', 'create_post');
 $app->get('/posts/user/:id', 'get_posts_by_user');
 $app->post('/posts/:user_id/:post_id', 'get_post');
 
+//  tiles
+$app->post('/rip-tile/:x/:y/:z', 'tile_rip_tile');
+$app->post('/request-tiles/', 'tile_request_tiles');
+$app->post('/request-tiles-string/', 'tile_request_string');
+$app->post('/request-tiles-json/', 'tile_request_json');
+
 //  user
 $app->post('/login/', 'login');
 $app->post('/logoff/', 'logoff');
@@ -316,6 +322,113 @@ function map_update_title ($map_id) {
   print json_encode($response);
 }
 
+function tile_request_tiles () {
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  //  destructure params
+  [ 
+    'neLat' => $ne_lat, 
+    'neLng' => $ne_lng,
+    'swLat' => $sw_lat,
+    'swLng' => $sw_lng,
+    'minZoom' => $min_zoom,
+    'maxZoom' => $max_zoom
+  ] = json_decode($app->request->getBody(), true);
+  //  calculate tile for ne corner @ zoom 12 . . .
+  /*
+  $zoom = 12; 
+  $ne_x = floor((($ne_lng + 180) / 360) * pow(2, $zoom));
+  $ne_y = floor((1 - log(tan(deg2rad($ne_lat)) + 1 / cos(deg2rad($ne_lat))) / pi()) /2 * pow(2, $zoom));
+  $response['ne_x'] = $ne_x;
+  $response['ne_y'] = $ne_y;
+  //  calculate tile for sw corner @ zoom 12 . .  
+  $zoom = 12; 
+  $sw_x = floor((($sw_lng + 180) / 360) * pow(2, $zoom));
+  $sw_y = floor((1 - log(tan(deg2rad($sw_lat)) + 1 / cos(deg2rad($sw_lat))) / pi()) /2 * pow(2, $zoom));
+  $response['sw_x'] = $sw_x;
+  $response['sw_y'] = $sw_y;
+  $response['zoom'] = $zoom;
+  */
+  $response['maxZoom'] = $max_zoom;
+  $response['minZoom'] = $min_zoom;
+
+  $tiles = array();
+  //  iterate through the z (zoom) values, which we already have
+  for ($z = $min_zoom; $z <= $max_zoom; $z++){
+    //  now we iterate through the y values, which we need to generate
+    $i_ne_y = floor((1 - log(tan(deg2rad($ne_lat)) + 1 / cos(deg2rad($ne_lat))) / pi()) /2 * pow(2, $z));
+    $i_sw_y = floor((1 - log(tan(deg2rad($sw_lat)) + 1 / cos(deg2rad($sw_lat))) / pi()) /2 * pow(2, $z));
+    for ($y = $i_ne_y; $y <= $i_sw_y; $y++){
+      //  now we iterate through the x, which we need to generate
+      $i_ne_x = floor((($ne_lng + 180) / 360) * pow(2, $z));
+      $i_sw_x = floor((($sw_lng + 180) / 360) * pow(2, $z));
+      for ($x = $i_sw_x; $x <= $i_ne_x; $x++){
+        $i_tile = array();
+        $i_tile['z'] = $z;
+        $i_tile['y'] = $y;
+        $i_tile['x'] = $x;
+        array_push($tiles, $i_tile);
+      }
+    };
+  };
+  $response['tiles'] = $tiles;
+  $response['length'] = sizeof($tiles);
+  print json_encode($response);
+}
+
+function tile_request_json () {
+  $response = array();
+  $app = \Slim\Slim::getInstance();
+  [ 
+    'neLat' => $ne_lat, 
+    'neLng' => $ne_lng,
+    'swLat' => $sw_lat,
+    'swLng' => $sw_lng,
+    'minZoom' => $min_zoom,
+    'maxZoom' => $max_zoom
+  ] = json_decode($app->request->getBody(), true);
+  $response['params'] = json_decode($app->request->getBody(), true);
+  $response['a'] = 'apple';
+  $response['b'] = 'orange';
+  print json_encode($response);
+}
+
+function tile_request_string () {
+  print "this is a response from the server";
+}
+
+function tile_rip_tile($x, $y, $z) {
+  $response = array();
+  $response['x'] = $x;
+  $response ['y'] = $y;
+  $response['z'] = $z;
+  //  http://services.arcgisonline.com/ArcGIS/rest/services/USA_Topo_Maps/MapServer/tile/12/1571/801.jpg
+  $url = "http://services.arcgisonline.com/ArcGIS/rest/services/USA_Topo_Maps/MapServer/tile/" . $z . "/" . $y . "/" . $x . ".jpg";
+  $response['image'] = $imageData = base64_encode(file_get_contents($url));
+  $response['f1_exists'] = is_dir("tile_servers/f1");
+  $response ['z_exists'] = is_dir("tile_servers/f1/" . $z);
+  //  check if z directory exists
+  if(! is_dir("tile_servers/f1/" . $z)){
+    mkdir("tile_servers/f1/" . $z, 0700);
+  };
+  //  check if x directory exists
+  if(! is_dir("tile_servers/f1/" . $z . "/" . $y)){
+    mkdir("tile_servers/f1/" . $z . "/" . $y, 0700);
+  };
+  // check if the file exists
+  $img_exists = file_exists("tile_servers/f1/" . $z . "/" . $y . "/" . $x . ".jpg");
+  $response['y_img_exists'] = $img_exists;
+  if(!$img_exists){
+    //Get the file
+    $content = file_get_contents($url);
+    //Store in the filesystem.
+    $fp = fopen("tile_servers/f1/" . $z . "/" . $y . "/" . $x . ".jpg", "w");
+    fwrite($fp, $content);
+    fclose($fp);
+  }
+  print json_encode($response);
+}
+
 function update_layer_feature( $layer_id ){
   $app = \Slim\Slim::getInstance();
   $response = array();
@@ -332,10 +445,7 @@ function update_layer_feature( $layer_id ){
   $response['update_feature'] = $layer->update_feature( $feature );
   $new_layer = new Layer($layer_id);
   $response['new_layer'] = $new_layer->to_array();
-
-
   print json_encode($response);
-
 }
 
 function update_layer_description ($layer_id) {
