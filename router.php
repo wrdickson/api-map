@@ -349,8 +349,7 @@ function tile_request_tiles () {
   $response['sw_y'] = $sw_y;
   $response['zoom'] = $zoom;
   */
-  $response['maxZoom'] = $max_zoom;
-  $response['minZoom'] = $min_zoom;
+
 
   $tiles = array();
   //  iterate through the z (zoom) values, which we already have
@@ -371,8 +370,15 @@ function tile_request_tiles () {
       }
     };
   };
-  $response['tiles'] = $tiles;
   $response['length'] = sizeof($tiles);
+  $response['maxZoom'] = $max_zoom;
+  $response['minZoom'] = $min_zoom;
+  $response['ne_lat'] = $ne_lat;
+  $response['ne_lng'] = $ne_lng;
+  $response['sw_lat'] = $sw_lat;
+  $response['sw_lng'] = $sw_lng;
+  $response['tiles'] = $tiles;
+  
   print json_encode($response);
 }
 
