@@ -8,6 +8,7 @@ Class Layer {
   private $layer_owner;
   // layer_json is a geoJson feature collection stored in db as a json string
   // but we keep it on the object as an array
+  // kind of confusing . . . 
   private $layer_json;
   private $layer_title;
   private $layer_desc;
