@@ -334,22 +334,6 @@ function tile_request_tiles () {
     'minZoom' => $min_zoom,
     'maxZoom' => $max_zoom
   ] = json_decode($app->request->getBody(), true);
-  //  calculate tile for ne corner @ zoom 12 . . .
-  /*
-  $zoom = 12; 
-  $ne_x = floor((($ne_lng + 180) / 360) * pow(2, $zoom));
-  $ne_y = floor((1 - log(tan(deg2rad($ne_lat)) + 1 / cos(deg2rad($ne_lat))) / pi()) /2 * pow(2, $zoom));
-  $response['ne_x'] = $ne_x;
-  $response['ne_y'] = $ne_y;
-  //  calculate tile for sw corner @ zoom 12 . .  
-  $zoom = 12; 
-  $sw_x = floor((($sw_lng + 180) / 360) * pow(2, $zoom));
-  $sw_y = floor((1 - log(tan(deg2rad($sw_lat)) + 1 / cos(deg2rad($sw_lat))) / pi()) /2 * pow(2, $zoom));
-  $response['sw_x'] = $sw_x;
-  $response['sw_y'] = $sw_y;
-  $response['zoom'] = $zoom;
-  */
-
 
   $tiles = array();
   //  iterate through the z (zoom) values, which we already have
