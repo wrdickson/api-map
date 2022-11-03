@@ -13,6 +13,8 @@ include "php_classes/class.layer.php";
 include "php_classes/class.post.php";
 include "php_classes/class.map.php";
 
+include "router_ftns/journal.php";
+
 
 
 //set the server timezone
